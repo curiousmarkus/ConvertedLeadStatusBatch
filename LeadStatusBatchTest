@@ -1,0 +1,233 @@
+@isTest
+public class LeadStatusBatchTest {
+    
+    // Helper method to convert a Lead with optional existing Account, Contact, Opportunity, and control over Opportunity creation
+    private static void convertLeadHelper(Lead lead, Id existingAccountId, Id existingContactId, Id existingOpportunityId, Boolean doNotCreateOpp) {
+        Database.LeadConvert lc = new Database.LeadConvert();
+        lc.setLeadId(lead.Id);
+        lc.setConvertedStatus('Converted'); // Ensure this status exists in your org
+
+        if (existingAccountId != null) {
+            lc.setAccountId(existingAccountId);
+        }
+
+        if (existingContactId != null) {
+            lc.setContactId(existingContactId);
+        }
+
+        if (existingOpportunityId != null) {
+            lc.setOpportunityId(existingOpportunityId);
+            lc.setDoNotCreateOpportunity(false); // Associate with existing Opportunity
+        } else {
+            lc.setDoNotCreateOpportunity(doNotCreateOpp); 
+        }
+
+        Database.LeadConvertResult lcr = Database.convertLead(lc);
+        System.assert(lcr.isSuccess(), 'Lead conversion failed for Lead ID: ' + lead.Id);
+    }
+
+
+    
+    @testSetup
+    static void setupTestData() {
+        // Create an existing Account with BillingCountryCode and set CreatedDate in the past
+        Account existingAccount = new Account(
+            Name = 'Existing Account',
+            BillingCountryCode = 'US'
+        );
+        insert existingAccount;
+        // Set Account CreatedDate to 30 days in the past
+        Test.setCreatedDate(existingAccount.Id, System.now().addDays(-30));
+        
+        // Create an existing Contact associated with the existing Account
+        Contact existingContact = new Contact(
+            FirstName = 'Existing',
+            LastName = 'Contact',
+            AccountId = existingAccount.Id
+        );
+        insert existingContact;
+        // Set Contact CreatedDate to 30 days in the past
+        Test.setCreatedDate(existingContact.Id, System.now().addDays(-30));
+        
+        // Create an existing Opportunity associated with the existing Account
+        Opportunity existingOpportunity = new Opportunity(
+            Name = 'Existing Opportunity',
+            StageName = 'Analyzing & Qualifying Needs',
+            CloseDate = Date.today().addDays(30),
+            AccountId = existingAccount.Id
+        );
+        insert existingOpportunity;
+        // Set Opportunity CreatedDate to 30 days in the past
+        Test.setCreatedDate(existingOpportunity.Id, System.now().addDays(-30));
+        
+        // Create Leads to be converted
+        // Lead 1: Convert to new Account, new Contact, no Opportunity
+        Lead lead1 = new Lead(
+            LastName = 'Lead1',
+            Company = 'Company1',
+            Status = 'Open',
+            Email = 'lead1@newaccnewconnoopp.com',
+            CountryCode = 'US'
+        );
+        
+        // Lead 2: Convert to new Account, new Contact, new Opportunity
+        Lead lead2 = new Lead(
+            LastName = 'Lead2',
+            Company = 'Company2',
+            Status = 'Open',
+            Email = 'lead2@newaccnewconnewopp.com',
+            CountryCode = 'US'
+        );
+        
+        // Lead 3: Convert to existing Account, new Contact, no Opportunity
+        Lead lead3 = new Lead(
+            LastName = 'Lead3',
+            Company = 'Company3',
+            Status = 'Open',
+            Email = 'lead3@exaccnewconnoopp.com',
+            CountryCode = 'US'
+        );
+        
+        // Lead 4: Convert to existing Account, new Contact, existing Opportunity
+        Lead lead4 = new Lead(
+            LastName = 'Lead4',
+            Company = 'Company4',
+            Status = 'Open',
+            Email = 'lead4@exaccnewconexopp.com',
+            CountryCode = 'US'
+        );
+
+        // Lead 5: Convert to existing Account, new Contact, new Opportunity
+        Lead lead5 = new Lead(
+            LastName = 'Lead5',
+            Company = 'Company5',
+            Status = 'Open',
+            Email = 'lead5@exaccnewconnewopp.com',
+            CountryCode = 'US'
+        );
+
+        // Lead 6: Convert to existing Account, existing Contact, no Opportunity
+        Lead lead6 = new Lead(
+            LastName = 'Lead6',
+            Company = 'Company6',
+            Status = 'Open',
+            Email = 'lead6@exaccexconnoopp.com',
+            CountryCode = 'US'
+        );
+
+        // Lead 7: Convert to existing Account, existing Contact, existing Opportunity
+        Lead lead7 = new Lead(
+            LastName = 'Lead7',
+            Company = 'Company7',
+            Status = 'Open',
+            Email = 'lead7@exaccexconexopp.com',
+            CountryCode = 'US'
+        );
+
+        // Lead 8: Convert to existing Account, existing Contact, new Opportunity
+        Lead lead8 = new Lead(
+            LastName = 'Lead8',
+            Company = 'Company8',
+            Status = 'Open',
+            Email = 'lead8@exaccexconnewopp.com',
+            CountryCode = 'US'
+        );
+
+        insert new List<Lead>{ lead1, lead2, lead3, lead4, lead5, lead6, lead7, lead8 };
+        
+        // Convert Leads
+        // Lead1: New Account & Contact, No Opportunity/doNotCreateOpp
+        convertLeadHelper(lead1, null, null, null, true);
+
+        // Lead2: New Account & Contact, New Opportunity
+        convertLeadHelper(lead2, null, null, null, false);
+
+        // Lead3: Existing Account, New Contact, No Opportunity/doNotCreateOpp
+        convertLeadHelper(lead3, existingAccount.Id, null, null, true);
+
+        // Lead4: Existing Account, New Contact, Existing Opportunity
+        convertLeadHelper(lead4, existingAccount.Id, null, existingOpportunity.Id, false);
+
+        // Lead5: Existing Account, New Contact, New Opportunity
+        convertLeadHelper(lead5, existingAccount.Id, null, null, false);
+
+        // Lead6: Existing Account, Existing Contact, No Opportunity/doNotCreateOpp
+        convertLeadHelper(lead6, existingAccount.Id, existingContact.Id, null, true);
+
+        // Lead7: Existing Account, Existing Contact, Existing Opportunity
+        convertLeadHelper(lead7, existingAccount.Id, existingContact.Id, existingOpportunity.Id, false);
+
+        // Lead8: Existing Account, Existing Contact, New Opportunity
+        convertLeadHelper(lead8, existingAccount.Id, existingContact.Id, null, false);
+    }
+
+    
+    @isTest
+    static void testBatchExecution() {
+        // Start test context
+        Test.startTest();
+        
+        // Instantiate the batch class
+        LeadStatusBatch batch = new LeadStatusBatch();
+        
+        // Execute the batch
+        Database.executeBatch(batch, 200);
+        
+        // End test context
+        Test.stopTest();
+        
+        // Verify that Leads have been updated correctly
+        // Query converted Leads to check their new Status
+        List<Lead> convertedLeads = [
+            SELECT Id, LastName, Status, Email, ConvertedDate, ConvertedAccountId, ConvertedAccount.CreatedDate, ConvertedContactId, ConvertedContact.CreatedDate, ConvertedOpportunityId, ConvertedOpportunity.CreatedDate 
+            FROM Lead 
+            WHERE IsConverted = true
+        ];
+        
+        // Expected statuses based on determineNewStatus logic:
+        // Lead1: 'Converted - New Acc, New Con, No Opp'
+        // Lead2: 'Converted - New Acc, New Con, New Opp'
+        // Lead3: 'Converted - Ex Acc, New Con, No Opp'
+        // Lead4: 'Converted - Ex Acc, New Con, Ex Opp'
+        // Lead5: 'Converted - Ex Acc, New Con, New Opp'
+        // Lead6: 'Converted - Ex Acc, Ex Con, No Opp'
+        // Lead7: 'Converted - Ex Acc, Ex Con, Ex Opp'
+        // Lead8: 'Converted - Ex Acc, Ex Con, New Opp'
+        
+        for (Lead ld : convertedLeads) {
+            switch on ld.Email {
+                when 'lead1@newaccnewconnoopp.com' {
+                    System.assertEquals('Converted - New Acc, New Con, No Opp', ld.Status, 'Lead1 status mismatch');
+                }
+                when 'lead2@newaccnewconnewopp.com' {
+                    System.assertEquals('Converted - New Acc, New Con, New Opp', ld.Status, 'Lead2 status mismatch');
+                }
+                when 'lead3@exaccnewconnoopp.com' {
+                    System.assertEquals('Converted - Ex Acc, New Con, No Opp', ld.Status, 'Lead3 status mismatch');
+                }
+                when 'lead4@exaccnewconexopp.com' {
+                    System.assertEquals('Converted - Ex Acc, New Con, Ex Opp', ld.Status, 'Lead4 status mismatch');
+                }
+                when 'lead5@exaccnewconnewopp.com' {
+                    System.assertEquals('Converted - Ex Acc, New Con, New Opp', ld.Status, 'Lead5 status mismatch');
+                }
+                when 'lead6@exaccexconnoopp.com' {
+                    System.assertEquals('Converted - Ex Acc, Ex Con, No Opp', ld.Status, 'Lead6 status mismatch');
+                }
+                when 'lead7@exaccexconexopp.com' {
+                    System.assertEquals('Converted - Ex Acc, Ex Con, Ex Opp', ld.Status, 'Lead7 status mismatch');
+                }
+                when 'lead8@exaccexconnewopp.com' {
+                    System.assertEquals('Converted - Ex Acc, Ex Con, New Opp', ld.Status, 'Lead8 status mismatch');
+                }
+                when else {
+                    System.assert(false, 'Unexpected Lead found: ' + ld.LastName + ' ' + ld.Email + ' ' + ld.Status);
+                }
+            }
+        }
+        
+        // Verify that no ErrorLog__c records were created for successful updates
+        // List<ErrorLog__c> errorLogs = [SELECT Id FROM ErrorLog__c];
+        // System.assertEquals(0, errorLogs.size(), 'Unexpected error logs were created.');
+    }
+}
