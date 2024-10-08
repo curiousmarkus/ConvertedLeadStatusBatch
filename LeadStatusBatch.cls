@@ -36,7 +36,6 @@ public class LeadStatusBatch implements Database.Batchable<SObject>, Schedulable
                         FunctionName__c = 'execute',
                         ErrorMessage__c = newStatus,
                         ErrorMessageLong__c = 'Lead ID: ' + ld.Id,
-                        Comment__c = 'Failed to update Lead with ID: ' + ld.Id
                         // StackTrace__c can be populated if available
                     );
                     errorLogs.add(errorLog);
@@ -59,7 +58,6 @@ public class LeadStatusBatch implements Database.Batchable<SObject>, Schedulable
                     FunctionName__c = 'execute',
                     ErrorMessage__c = e.getMessage(),
                     ErrorMessageLong__c = 'Lead ID: ' + ld.Id + '\n' + e.getStackTraceString(),
-                    Comment__c = 'Exception while updating Lead with ID: ' + ld.Id,
                     StackTrace__c = e.getStackTraceString()
                 );
                 errorLogs.add(errorLog);
@@ -83,7 +81,6 @@ public class LeadStatusBatch implements Database.Batchable<SObject>, Schedulable
                         FunctionName__c = 'execute',
                         ErrorMessage__c = 'DML Exception',
                         ErrorMessageLong__c = 'Failed to update Lead ID: ' + failedLead.Id + '\n' + d.getMessage(),
-                        Comment__c = 'DML Exception for Lead ID: ' + failedLead.Id,
                         StackTrace__c = d.getStackTraceString()
                     );
                     errorLogs.add(errorLog);
