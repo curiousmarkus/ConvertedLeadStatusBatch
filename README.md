@@ -22,8 +22,13 @@ In the initial SOQL Query we ensure that we only handle leads that have the nece
 - ConvertedAccountId
 - ConvertedContactId
 
-## Testing
+## Test Class
 There is a comprehensive test class LeadStatusBatchTest.cls to ensure the batch class functions as expected.
+It created and converts Leads for all available szenarios.
+
+Please Note: 
+- This assumes you use state and country picklist (CountryCode)
+- Checking the Error Logging is outcommented
 
 ## Error Handling
 For Error Handling we use a custom object (and a flow that sends an email as soon as we have a new record in there).
